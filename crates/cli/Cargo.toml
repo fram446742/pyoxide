@@ -1,0 +1,14 @@
+[package]
+name = "pyoxide"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "pyoxide"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+# Package name `pyoxidizer`, library name `pyoxidizerlib`.
+pyoxidizer.workspace = true
