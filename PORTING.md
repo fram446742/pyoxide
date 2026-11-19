@@ -24,6 +24,23 @@ fast-forward to `origin/main`.
 | `port/16-output-verdict` | verdict at the end of packaging | `crates/cli` | |
 | `port/17-just-clean` | `just clean` / `clean-all` | `Justfile` | |
 
+## F2 reality check (verified against the pinned revision)
+
+The fork's `package` layer is **fork-only**: `python_package_generate_packed_resources`,
+`python_package_unpack_wheels` and `build_pyoxy_runner` do not exist upstream. F2
+*moves* ~900 lines, it does not call them.
+
+What upstream does expose, and the port must build on:
+
+| Needed | Upstream location | Public |
+|---|---|---|
+| resolve/download a distribution | `py_packaging::distribution::{resolve_distribution, default_distribution_location, download_distribution}` | yes |
+| pip into resources | `py_packaging::packaging_tool::pip_download_wheel_resources` | yes |
+| bytecode compiler | `PythonDistribution::python_bytecode_compiler` (trait method) | yes |
+| policy knobs | `python_packaging::policy::{ExtensionModuleFilter, ConcreteResourceLocation}` | yes |
+| environment, temp dirs, cache | `environment::Environment` | yes |
+| distribution list | `python_distributions::PythonDistributionCollection` | yes (the `default_python_distributions` registry itself is private; go through `default_distribution_location`) |
+
 ## Ground rules
 
 - **Crate first, patch last.** Everything reachable through
@@ -44,7 +61,11 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
 ## Status
 
 - [x] F0 — fork frozen: `port/*` tags, `base` = `origin/main`, `just sync`.
-- [x] F1 — this skeleton compiles against the pinned revision.
+- [x] F1 — this skeleton compiles against the pinned revision; `pyoxide
+  dist-info` is a real call into `pyoxidizerlib` (it also caught the first
+  signature difference: upstream takes `&str`, the fork had `&Path`).
+  `crates/runner` is deferred to F3 because it cannot compile without PyO3
+  embedding artifacts.
 - [ ] F2 — `package` / `package --unpack` in `crates/cli`.
 - [ ] F3 — `crates/runner` (pyoxy equivalent) over `pyembed`.
 - [ ] F4 — `patches/`, CI on pin bumps, weekly upstream check.

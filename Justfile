@@ -12,8 +12,7 @@ build:
 test:
   cargo test
 
-# Move the pinned upstream revision. Compilation errors here are the point:
-# they name every upstream API this project uses that changed.
+# Move the pinned upstream revision; compile errors name what changed.
 upstream-bump rev:
   sed -i -E 's/rev = "[0-9a-f]{40}"/rev = "{{rev}}"/' Cargo.toml
   grep -n 'rev = ' Cargo.toml

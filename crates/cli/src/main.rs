@@ -1,7 +1,6 @@
 use {
     anyhow::Result,
     clap::{Parser, Subcommand},
-    std::path::PathBuf,
 };
 
 /// Package self-contained Python applications.
@@ -17,7 +16,7 @@ enum Command {
     /// Print the contents of a Python distribution archive.
     DistInfo {
         /// Python distribution `.tar.zst` archive.
-        archive: PathBuf,
+        archive: String,
     },
 }
 
