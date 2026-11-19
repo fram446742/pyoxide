@@ -1,11 +1,12 @@
 use {
     anyhow::Result,
     clap::{Parser, Subcommand},
-    std::path::PathBuf,
+    std::{collections::HashMap, path::PathBuf},
 };
 
 mod package;
 mod pip;
+mod runner;
 
 /// Package self-contained Python applications.
 #[derive(Parser)]
@@ -54,6 +55,45 @@ enum Command {
         #[arg(required = true, num_args = 1.., value_name = "REQ")]
         requirements: Vec<String>,
     },
+
+    /// Build the self-contained runner against embedded Python resources.
+    BuildRunner {
+        /// Project directory containing pyoxide.bzl.
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+
+        /// Directory to write the executable (and the resources blob) to.
+        #[arg(long, default_value = "dist")]
+        dest: PathBuf,
+
+        /// Name of the produced executable.
+        #[arg(long, default_value = "pyoxide-runner")]
+        exe_name: String,
+
+        /// Python version (X.Y) to embed.
+        #[arg(long)]
+        python_version: Option<String>,
+
+        /// Space separated requirements to embed, e.g. "requests pyyaml".
+        #[arg(long)]
+        requirements: Option<String>,
+
+        /// Ship the packed resources as a file next to the executable.
+        #[arg(long)]
+        split_resources: bool,
+
+        /// Build the runner with optimizations.
+        #[arg(long)]
+        release: bool,
+
+        /// Rust target triple to use.
+        #[arg(long, default_value_t = pyoxidizerlib::environment::default_target_triple().to_string())]
+        target_triple: String,
+
+        /// Print what the embedding step does.
+        #[arg(long, short)]
+        verbose: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -61,6 +101,40 @@ fn main() -> Result<()> {
         Command::DistInfo { archive } => {
             let env = pyoxidizerlib::environment::Environment::new()?;
             pyoxidizerlib::projectmgmt::python_distribution_info(&env, &archive)
+        }
+
+        Command::BuildRunner {
+            path,
+            dest,
+            exe_name,
+            python_version,
+            requirements,
+            split_resources,
+            release,
+            target_triple,
+            verbose,
+        } => {
+            let env = pyoxidizerlib::environment::Environment::new()?;
+
+            let mut vars: HashMap<String, Option<String>> = HashMap::new();
+            if let Some(version) = python_version {
+                vars.insert("PYTHON_VERSION".to_string(), Some(version));
+            }
+            if let Some(requirements) = requirements {
+                vars.insert("REQUIREMENTS".to_string(), Some(requirements));
+            }
+
+            runner::build_runner(
+                &env,
+                &path,
+                &dest,
+                &exe_name,
+                Some(&target_triple),
+                vars,
+                release,
+                split_resources,
+                verbose,
+            )
         }
 
         Command::Package {

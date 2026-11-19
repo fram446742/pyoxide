@@ -19,7 +19,7 @@ fast-forward to `origin/main`.
 | `port/11-pyoxy-split` | resources beside the executable, versioned libs | `crates/runner` | mismatch warns and skips |
 | `port/12-docs-split` | split-resource docs | `README.md` | |
 | `port/13-package-verdict` | per-package verdict | `crates/cli` | |
-| `port/14-wheel-bytecode` | bytecode-only wheels in the scanner | **`[patch]` in `Cargo.toml`** | delete once upstream takes it |
+| `port/14-wheel-bytecode` | bytecode-only wheels in the scanner | **fork branch `fixes/upstream`** | delete the branch once upstream takes it |
 | `port/15-package-unpack` | `package --unpack` | `crates/cli` | |
 | `port/16-output-verdict` | verdict at the end of packaging | `crates/cli` | |
 | `port/17-just-clean` | `just clean` / `clean-all` | `Justfile` | |
@@ -46,10 +46,14 @@ What upstream does expose, and the port must build on:
 - **Crate first, patch last.** Everything reachable through
   `pyoxidizerlib`'s public modules (`py_packaging`, `projectmgmt`,
   `environment`, `shell`, `starlark`) goes in a crate here.
-- **`[patch]` means upstream internals.** Cargo's `[patch]` block replaces one
-  crate at a revision, with no vendoring: today exactly one crate
-  (`python-packaging`, for port/14). If the block grows past a couple of
-  crates, the previous rule was applied wrongly.
+- **Upstream-only fixes live on a branch, not in this tree.** The pin in
+  `Cargo.toml` points at the fork's `fixes/upstream` branch: `origin/main` plus
+  two commits (`python-packaging` bytecode-only wheels; `pyembed`/`libpython`
+  exit requests and cc object names). Cargo cannot patch a crate inside a git
+  checkout, and patching one crate of a repo splits its types in two — the
+  dependency graph must come from a single source. When a fix lands upstream,
+  rebase the branch on the new base and drop the commit; when the branch is
+  empty, point the pin at `ntamas/PyOxidizer`.
 - **Send patches upstream.** Anything accepted upstream leaves `patches/`.
 
 ## Not ported
@@ -77,6 +81,9 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
   until it lands upstream. `--unpack` writes no `.dist-info`, so
   `importlib.metadata.version()` does not work for unpacked packages —
   same behaviour as the fork.
-- [ ] F3 — `crates/runner` (pyoxy equivalent) over `pyembed`.
+- [x] F3 — `crates/runner`: `pyoxide-runner`, a `python` executable with the
+  standard library embedded, `--yaml`, and `pyoxide-modules/` support. Built by
+  `pyoxide build-runner`, which evaluates `pyoxidizer.bzl` for the embedding
+  artifacts and then compiles the crate against them.
 - [ ] F4 — `patches/`, CI on pin bumps, weekly upstream check.
 - [ ] F5 — retire the fork.

@@ -22,3 +22,20 @@ upstream-bump rev:
 upstream-status:
   git ls-remote https://github.com/ntamas/PyOxidizer main | cut -f1
   grep -oE 'rev = "[0-9a-f]{40}"' Cargo.toml
+
+# Build the self-contained runner with Python embedded.
+runner python_version="3.11" libraries="" split="":
+  #!/usr/bin/env bash
+  set -eo pipefail
+  args=(--path . --dest dist/runner --python-version {{python_version}} --release)
+  if [ -n "{{libraries}}" ]; then
+    args+=(--requirements "{{libraries}}")
+  fi
+  if [ -n "{{split}}" ]; then
+    args+=(--split-resources)
+  else
+    rm -f dist/runner/pyoxide-resources.packed-resources
+  fi
+  cargo run --quiet --bin pyoxide -- build-runner "${args[@]}"
+  ls -lh dist/runner/
+  ./dist/runner/pyoxide-runner -V

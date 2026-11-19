@@ -1,5 +1,8 @@
 [workspace]
-members = ["crates/cli"]
+members = ["crates/cli", "crates/runner"]
+# The runner cannot compile without PyO3 embedding artifacts, which
+# `pyoxide build-runner` produces. Plain builds and tests must skip it.
+default-members = ["crates/cli"]
 resolver = "2"
 
 [workspace.package]
@@ -7,18 +10,20 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-# The base fork, pinned by revision. This line is the only place the
-# revision appears: bump it with `just upstream-bump <sha>`.
-pyoxidizer = { git = "https://github.com/ntamas/PyOxidizer", rev = "df4d1e7da1feda13de55abc8496bdf68bf9f770f" }
-# Same revision: the resource model the package commands write.
-python-packaging = { git = "https://github.com/ntamas/PyOxidizer", rev = "df4d1e7da1feda13de55abc8496bdf68bf9f770f" }
-
-serde_json = "1.0"
-duct = "1.1"
-tempfile = "3"
+# The base fork plus the fixes that are not upstream yet, on the fork's
+# `fixes/upstream` branch (two commits on top of origin/main). When they land
+# upstream, point these at https://github.com/ntamas/PyOxidizer and bump.
+pyoxidizer = { git = "https://github.com/fram446742/PyOxidizer", rev = "5c4461593886cd1b3de95ee0e7e03611add24bd3" }
+python-packaging = { git = "https://github.com/fram446742/PyOxidizer", rev = "5c4461593886cd1b3de95ee0e7e03611add24bd3" }
+pyembed = { git = "https://github.com/fram446742/PyOxidizer", rev = "5c4461593886cd1b3de95ee0e7e03611add24bd3", default-features = false, features = ["serialization", "zipimport"] }
 
 anyhow = "1.0"
 clap = { version = "4.6", features = ["derive"] }
+duct = "1.1"
+serde = "1.0"
+serde_json = "1.0"
+serde_yaml = "0.9"
+tempfile = "3"
 
 [profile.release]
 # This binary carries a Python payload; the Rust part is a few MB. Same
@@ -28,9 +33,3 @@ lto = "thin"
 codegen-units = 1
 strip = "symbols"
 
-# port/14: wheels can ship modules only as .pyc (numpy has one); upstream's
-# scanner at the pinned revision fails on them with a bare ENOENT. The fix is
-# in the fork's tree and is on its way upstream; until then this replaces just
-# that crate. Delete this block and bump the pin once it lands.
-[patch."https://github.com/ntamas/PyOxidizer"]
-python-packaging = { git = "https://github.com/fram446742/PyOxidizer", rev = "4bb933a0e845acbc285e8b6a3a398908b3402a8b" }

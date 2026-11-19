@@ -3251,15 +3251,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3531,9 +3522,9 @@ dependencies = [
 
 [[package]]
 name = "mailparse"
-version = "0.18.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "068d4f5d1083883b9e626051dc5bdaa321f5be01093e61ade3ee3ab44dafeadd"
+checksum = "60819a97ddcb831a5614eb3b0174f3620e793e97e09195a395bfa948fd68ed2f"
 dependencies = [
  "charset",
  "data-encoding",
@@ -3565,6 +3556,26 @@ name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+
+[[package]]
+name = "memmap2"
+version = "0.9.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b0ca1155a9ecc25aa12e8313a119f32edf0255fea2f44839c4ac0a12b2ac157"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "memory-module-sys"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bbdce2925c681860b08875119254fb5543dbf6337c56ff93afebeed9c686da3"
+dependencies = [
+ "cc",
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "minicbor"
@@ -4411,12 +4422,76 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyembed"
+version = "0.27.0-pre"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
+dependencies = [
+ "anyhow",
+ "dunce",
+ "libc",
+ "once_cell",
+ "pyo3",
+ "pyo3-build-config",
+ "python-oxidized-importer",
+ "python-packaging",
+ "serde",
+]
+
+[[package]]
+name = "pyo3"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "229ca13b8a15bb0d1487b81ab975bfcd97513416499a8312011b6036e42e0de4"
+dependencies = [
+ "libc",
+ "once_cell",
+ "portable-atomic",
+ "pyo3-build-config",
+ "pyo3-ffi",
+ "pyo3-macros",
+]
+
+[[package]]
 name = "pyo3-build-config"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70130e2b6dd1ee589a8788026a429561ca5c40fa7a2fa7914c2282eddae24700"
 dependencies = [
  "target-lexicon",
+]
+
+[[package]]
+name = "pyo3-ffi"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e7ff73c555c286d212d4ce7e5fbda845a973c4f61bd5f160f5f2c3c2a04d1c4"
+dependencies = [
+ "libc",
+ "pyo3-build-config",
+]
+
+[[package]]
+name = "pyo3-macros"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c46d2e5862c7bb8207e3b639f713dda3c499933444784154c11d013c5a691b60"
+dependencies = [
+ "proc-macro2",
+ "pyo3-macros-backend",
+ "quote",
+ "syn 3.0.10",
+]
+
+[[package]]
+name = "pyo3-macros-backend"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38b89f066f2ae72a2aef52d1537ca2fcd104440ebfadee06e97aa90738a25b9b"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -4433,9 +4508,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyoxide-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "pyembed",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "pyoxidizer"
 version = "0.131.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anstream 0.6.21",
  "anstyle",
@@ -4464,7 +4551,7 @@ dependencies = [
  "path-dedot",
  "pyo3-build-config",
  "python-packaging",
- "python-packed-resources 0.14.0-pre (git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f)",
+ "python-packed-resources",
  "remove_dir_all",
  "rustc_version",
  "semver",
@@ -4493,20 +4580,39 @@ dependencies = [
 ]
 
 [[package]]
-name = "python-packaging"
-version = "0.18.0-pre"
-source = "git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b#4bb933a0e845acbc285e8b6a3a398908b3402a8b"
+name = "python-oxidized-importer"
+version = "0.11.0-pre"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
- "base64 0.23.1",
+ "memmap2",
+ "memory-module-sys",
+ "once_cell",
+ "pyo3",
+ "pyo3-build-config",
+ "python-packaging",
+ "python-packed-resources",
+ "simple-file-manifest",
+ "winapi",
+ "zip 9.7.3",
+]
+
+[[package]]
+name = "python-packaging"
+version = "0.18.0-pre"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
  "byteorder",
  "encoding_rs",
- "itertools 0.15.0",
+ "itertools 0.14.0",
  "mailparse",
  "once_cell",
- "python-packed-resources 0.14.0-pre (git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b)",
+ "python-packed-resources",
  "regex",
- "sha2 0.11.1",
+ "serde",
+ "sha2 0.10.9",
  "simple-file-manifest",
  "spdx",
  "time",
@@ -4517,17 +4623,7 @@ dependencies = [
 [[package]]
 name = "python-packed-resources"
 version = "0.14.0-pre"
-source = "git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b#4bb933a0e845acbc285e8b6a3a398908b3402a8b"
-dependencies = [
- "anyhow",
- "byteorder",
- "safe-transmute",
-]
-
-[[package]]
-name = "python-packed-resources"
-version = "0.14.0-pre"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -5658,9 +5754,9 @@ dependencies = [
 
 [[package]]
 name = "spdx"
-version = "0.13.6"
+version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "646c5a367da914e3babcb9cd8e91c37ccaac42325b8f86f036513ad103f2a716"
+checksum = "c3e17e880bafaeb362a7b751ec46bdc5b61445a188f80e0606e68167cd540fa3"
 dependencies = [
  "smallvec",
 ]
@@ -5732,7 +5828,7 @@ dependencies = [
 [[package]]
 name = "starlark-dialect-build-targets"
 version = "0.9.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "codemap",
@@ -6223,7 +6319,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tugger"
 version = "0.19.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "apple-bundles",
@@ -6253,7 +6349,7 @@ dependencies = [
 [[package]]
 name = "tugger-apple"
 version = "0.9.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "goblin 0.10.7",
@@ -6264,7 +6360,7 @@ dependencies = [
 [[package]]
 name = "tugger-binary-analysis"
 version = "0.8.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -6276,7 +6372,7 @@ dependencies = [
 [[package]]
 name = "tugger-code-signing"
 version = "0.11.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "apple-bundles",
@@ -6298,7 +6394,7 @@ dependencies = [
 [[package]]
 name = "tugger-common"
 version = "0.11.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "fs2",
@@ -6316,7 +6412,7 @@ dependencies = [
 [[package]]
 name = "tugger-rust-toolchain"
 version = "0.14.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "flate2",
@@ -6337,7 +6433,7 @@ dependencies = [
 [[package]]
 name = "tugger-snapcraft"
 version = "0.16.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "duct",
@@ -6351,7 +6447,7 @@ dependencies = [
 [[package]]
 name = "tugger-windows"
 version = "0.11.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "duct",
@@ -6366,7 +6462,7 @@ dependencies = [
 [[package]]
 name = "tugger-windows-codesign"
 version = "0.11.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "duct",
@@ -6381,7 +6477,7 @@ dependencies = [
 [[package]]
 name = "tugger-wix"
 version = "0.17.0"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=5c4461593886cd1b3de95ee0e7e03611add24bd3#5c4461593886cd1b3de95ee0e7e03611add24bd3"
 dependencies = [
  "anyhow",
  "duct",
