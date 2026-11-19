@@ -63,6 +63,16 @@ pipeline), `release` (upstream maintainer tool), `pyembed-bench`,
 `starlark-dialect-build-targets` (dependency of `pyoxidizerlib`, arrives with
 it), and `pyoxy` itself (replaced by `crates/runner`).
 
+## Bumping the pin
+
+1. In the fork: `just sync`, then `just fixes-rebase` (rebases `fixes/upstream`
+   onto `origin/main`; prints the new revision).
+2. `git push --force-with-lease myrepo fixes/upstream`.
+3. Here: `just upstream-bump <rev>`; `just upstream-check` should say ok.
+
+When the two fixes land upstream, `fixes/upstream` becomes empty: point the
+three dependency lines at `ntamas/PyOxidizer` and delete the branch.
+
 ## Status
 
 - [x] F0 — fork frozen: `port/*` tags, `base` = `origin/main`, `just sync`.
@@ -85,5 +95,9 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
   standard library embedded, `--yaml`, and `pyoxide-modules/` support. Built by
   `pyoxide build-runner`, which evaluates `pyoxidizer.bzl` for the embedding
   artifacts and then compiles the crate against them.
-- [ ] F4 — `patches/`, CI on pin bumps, weekly upstream check.
+- [x] F4 — bump machinery: `just upstream-bump`, `just upstream-status`,
+  `just upstream-check` (fails when the base fork moved past the pin), a runner
+  job in CI that builds and smoke-tests the artifact, and a weekly scheduled
+  run of the check. The fixes branch is rebased with `just fixes-rebase` in the
+  fork.
 - [ ] F5 — retire the fork.

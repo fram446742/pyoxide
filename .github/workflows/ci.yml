@@ -1,7 +1,37 @@
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly: has the base fork moved past the pin?
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - run: cargo test
+
+  # The runner is the artifact that matters: embedded Python, C-extension
+  # libraries from pyoxide-modules, and the split-resources layout.
+  runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: extractions/setup-just@v3
+      - name: Install clang and lld
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+      - run: just runner
+      - name: Smoke test
+        run: |
+          ./dist/runner/pyoxide-runner -c 'import sys; print(sys.version)'
+          ./dist/runner/pyoxide-runner -c 'raise SystemExit(3)' || [ $? -eq 3 ]
+
+  upstream:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: extractions/setup-just@v3
+      - run: just upstream-check
