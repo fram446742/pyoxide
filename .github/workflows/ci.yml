@@ -14,8 +14,7 @@ jobs:
       - uses: extractions/setup-just@v3
       - run: just test
 
-  # The runner is the artifact that matters: embedded Python, C-extension
-  # libraries from pyoxide-modules, and the split-resources layout.
+  # Builds the artifact and checks it runs.
   runner:
     runs-on: ubuntu-latest
     steps:

@@ -21,8 +21,7 @@ fn main() {
         }
     }
 
-    // pyoxide build-runner points PYO3_CONFIG_FILE at the embedding artifacts
-    // and keeps the packed resources next to it.
+    // build-runner points PYO3_CONFIG_FILE at the embedding artifacts.
     if let Ok(config_path) = std::env::var("PYO3_CONFIG_FILE") {
         let config_path = std::path::PathBuf::from(config_path);
         println!("cargo:rerun-if-changed={}", config_path.display());
@@ -38,9 +37,7 @@ fn main() {
         if packed_resources_path.exists() {
             println!("cargo:rerun-if-changed={}", packed_resources_path.display());
 
-            // `--split-resources` ships the blob as a sibling file so the
-            // executable stays small. The blob is not embedded, so it must not
-            // be compiled in: the loader reads it at run time.
+            // Split builds read the blob at run time; do not compile it in.
             let split = std::env::var("PYOXIDE_PACKED_RESOURCES_SPLIT")
                 .map(|v| v == "1")
                 .unwrap_or(false);
@@ -74,14 +71,9 @@ fn pyo3_config_python_version(config_path: &Path) -> Option<String> {
         .map(|version| version.trim().to_string())
 }
 
-/// Re-emits linker arguments from the PyO3 configuration file.
-///
-/// PyOxidizer records the linker arguments needed to link libpython (e.g. the
-/// `-B` argument selecting the LLD linker needed for LLVM bitcode libpython)
-/// as `extra_build_script_line` entries in the PyO3 configuration file. Cargo
-/// only honors `cargo:rustc-link-arg` lines emitted by the build script of
-/// the crate producing the binary, not those emitted by dependencies such as
-/// `pyo3-ffi`, so we have to emit them ourselves.
+/// Re-emit the linker arguments PyOxidizer recorded in the PyO3 config.
+/// Cargo ignores `rustc-link-arg` from dependencies like `pyo3-ffi`, so the
+/// binary's own build script has to pass them on.
 fn emit_pyo3_config_link_args(config_path: &Path) {
     let config = std::fs::read_to_string(config_path)
         .unwrap_or_else(|e| panic!("could not read {}: {}", config_path.display(), e));

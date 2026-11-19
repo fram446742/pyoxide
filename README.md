@@ -1,80 +1,37 @@
 # pyoxide
 
-Self-contained Python: one executable with an interpreter, the standard library
-and native extension modules inside it, plus the tooling to put any library
-next to it.
+A `python` executable with the interpreter, the standard library and its native
+modules inside it, plus a tool for dropping libraries next to it.
 
-It is a small downstream of [PyOxidizer](https://github.com/indygreg/PyOxidizer):
-instead of carrying ~69 k lines of build tool, this workspace depends on those
-crates at one pinned revision (`Cargo.toml`, three lines) and keeps only what
-they do not expose — per-package library files and a prebuilt `python`
-executable.
+It is built on PyOxidizer's crates, pinned by revision, and only adds what they
+do not do: per-package library files and a prebuilt interpreter.
 
 ```console
+$ cargo build
 $ just runner
-...
--rwxr-xr-x 1 user user 154M  pyoxide-runner
-Python 3.11.18
-
-$ dist/runner/pyoxide-runner -c 'import sys; print(sys.version)'
-3.11.18 (main, Nov 10 2026, 00:00:00) [GCC ...]
-
-$ dist/runner/pyoxide-runner -c 'import numpy; print(numpy.__version__)'
-2.2.6
+$ ./dist/runner/pyoxide-runner -c 'import sys; print(sys.version)'
+3.11.18 (main, Nov 10 2026, ...)
 ```
 
-## What is in the box
+You need Rust, `clang` and `lld`. No Python installation: everything the runner
+reports comes from the embedded distribution.
 
-| Binary | Purpose |
-|---|---|
-| `pyoxide` | The build tool: `package`, `package --unpack`, `build-runner`, `dist-info` |
-| `pyoxide-runner` | The product: a `python`-compatible interpreter with Python inside it |
+## The runner
 
-`pyoxide` is a normal Rust binary you build once. `pyoxide-runner` is built per
-Python version (and per set of baked-in libraries) by `pyoxide build-runner`.
+`pyoxide-runner` is `python`. Arguments go to the interpreter, unchanged —
+`-c`, `-m`, a script, `-` for stdin, `-O`, `-OO`, `-B`, `-E`, `-s`, `-X`, `-W`,
+`-V`, `--help` — with the usual exit codes. No arguments starts a REPL. Rename
+it to `python3` and nothing changes except the name in `sys.argv[0]`.
 
-## Requirements
+Two things `python` does not have:
 
-| Thing | Why |
-|---|---|
-| Rust (edition 2024, 1.85+) | building either binary |
-| [`just`](https://github.com/casey/just) | the recipes below; every one is a two-line wrapper over cargo, so the raw commands work without it |
-| Rust 1.99.1 | **downloaded automatically** by PyOxidizer when building the runner; it reads LLVM 23 bitcode |
-| `clang` and `lld` | the runner links a bitcode `libpython` statically (Linux/macOS) |
-| network | first runner build downloads its Python distribution into `~/.cache/pyoxidizer/python_distributions` |
-
-No Python installation is needed. Everything the runner reports comes from the
-embedded distribution.
-
-## Quick start
-
-```console
-$ cargo build                                    # the `pyoxide` tool
-$ just runner                                    # the runner, stdlib embedded
-$ dist/runner/pyoxide-runner -c 'print("hi")'    # or: ./pyoxide-runner script.py
+```
+pyoxide-runner --runner-help          # what this executable can also do
+pyoxide-runner --yaml app.yaml        # interpreter described by YAML
 ```
 
-## Running Python
-
-The runner is `python`. Every argument goes to the interpreter — `-c`, `-m`, a
-script path, `-` for stdin, `-O`, `-OO`, `-B`, `-E`, `-s`, `-X`, `-W`, `-V`,
-`--version`, `--help` — with the documented exit codes. No arguments starts a
-REPL. Renaming the binary to `python3` changes nothing except the name printed
-in `sys.argv[0]`.
-
-The features `python` does not have live behind long options, because `-h` and
-`--help` belong to the interpreter:
-
-```console
-$ pyoxide-runner --runner-help
-$ pyoxide-runner --yaml app.yaml arg1 arg2     # interpreter described by YAML
-$ pyoxide-runner run-yaml app.yaml -- args     # deprecated spelling
-$ pyoxide-runner run-python -- args            # deprecated spelling of the default
-```
-
-A YAML config is the same document a PyOxidizer project uses, plus an
-`interpreter_config` block; the file needs a line starting with `---`, `...` is
-optional:
+The YAML is the document a PyOxidizer project uses, with an `interpreter_config`
+block. It needs a `---` line; `...` is optional:
 
 ```yaml
 ---
@@ -83,13 +40,13 @@ interpreter_config:
 ...
 ```
 
-## Shipping libraries
+## Libraries
 
-Either form goes in `pyoxide-modules/`, a directory next to the executable. The
-runner scans it at startup: copy files in to add a library, delete them to
-remove one. No rebuild, no environment variables.
+Both forms live in `pyoxide-modules/`, next to the executable. The runner scans
+it at startup, so adding a library is copying a file and removing one is
+deleting it. No rebuild, no environment variables.
 
-### Packed: one file per package
+One file per package:
 
 ```console
 $ pyoxide package --dest dist/runner/pyoxide-modules requests idna
@@ -98,13 +55,9 @@ wrote dist/runner/pyoxide-modules/idna.packed-resources
 packaging complete: 2 package(s), nothing was skipped
 ```
 
-Each package gets a packed resources file plus a `.packed-resources.json`
-sidecar recording the Python version and target triple. Bytecode from another
-Python fails with opaque errors, so a file whose sidecar names a different
-version is skipped with a warning instead.
-
-Packed files are loaded from memory, which means **C extension modules cannot
-be loaded from them on Linux**. They are skipped at packaging time and reported:
+That file is loaded from memory, and on Linux a C extension cannot be loaded
+from memory. Those modules are skipped and reported, so you find out at build
+time instead of at import time:
 
 ```console
 $ pyoxide package --dest dist/runner/pyoxide-modules psutil
@@ -117,158 +70,93 @@ C extension modules cannot be loaded from a packed resources file on this platfo
   pyoxide package --unpack --python-version 3.11 --dest dist/runner/pyoxide-modules psutil
 ```
 
-### Unpacked: a directory per package
+The other form writes a directory of real files, which is what `.so` modules and
+`__file__` need:
 
 ```console
 $ pyoxide package --unpack --dest dist/runner/pyoxide-modules numpy
 wrote dist/runner/pyoxide-modules/numpy/
-unpacked libraries are imported from real files
-```
-
-The directory holds the wheel's files; its parent becomes a `sys.path` entry.
-This is the form that carries `.so` files and real `__file__` paths:
-
-```console
 $ pyoxide-runner -c 'import numpy, numpy.linalg as l; print(numpy.__version__, l.det([[1,2],[3,4]]))'
 2.2.6 -2.0
 ```
 
-A `<package>.json` sidecar records the same metadata, and an unpacked directory
-takes precedence over a packed file of the same name (a warning says so).
+Every package gets a sidecar recording the Python version it was built for (and
+the ABI tag for directories). The runner skips a file or directory whose sidecar
+names another version, with a warning. A directory wins over a packed file of
+the same name.
 
 ## Commands
 
-### `pyoxide package`
+`pyoxide package [--dest DIR] [--unpack] [--python-version X.Y] [--verbose] REQ...`
 
-```
-pyoxide package [OPTIONS] <REQ>...
-  --dest <DIR>            where to write, default .
-  --unpack                write directories of real files instead of packed files
-  --python-version <X.Y>  default: the newest the distribution list has
-  --flavor <FLAVOR>       default: standalone
-  --target-triple <TRIPLE> default: host
-  --verbose               print pip output and every skipped resource
-```
+Wheels only, resolved by pip: `requests`, `lxml>=5`, `numpy==2.2.6`. A package
+without a wheel for the target is an error.
 
-Requirements are pip's: `requests`, `lxml>=5`, `numpy==2.2.6`. Wheels only;
-a package that has no wheel for the target is an error, not a silent fallback.
+`pyoxide build-runner [--dest DIR] [--python-version X.Y] [--requirements "a b"] [--split-resources] [--release]`
 
-### `pyoxide build-runner`
+Builds the runner. It runs in two stages:
 
-```
-pyoxide build-runner [OPTIONS]
-  --path <DIR>             project directory containing pyoxidizer.bzl, default .
-  --dest <DIR>             where to write the executable, default dist
-  --exe-name <NAME>        default pyoxide-runner
-  --python-version <X.Y>   Python to embed
-  --requirements <STR>     space separated, baked into the executable
-  --split-resources        payload in a sibling file instead of embedded
-  --release                optimised runner
-  --target-triple <TRIPLE> default: host
-```
+1. evaluate the `resources` target of `pyoxidizer.bzl` with the pinned library —
+   this resolves or downloads the Python distribution and writes
+   `build/<triple>/<profile>/resources/`, containing a PyO3 config and the packed
+   resources;
+2. compile `crates/runner` with `PYO3_CONFIG_FILE` pointing at that config, then
+   copy the executable to `--dest`.
 
-`--split-resources` produces a 24 MB executable plus a 132 MB
-`pyoxide-resources.packed-resources` blob that it memory-maps; the two must stay
-together. Without the flag it is one 154 MB file. `--requirements` bakes
-packages in, which only works for what a packed file can hold: C extension
-modules are skipped with a message, so ship those with `package --unpack`
-instead.
+`--split-resources` keeps the payload in a sibling
+`pyoxide-resources.packed-resources` instead of embedding it: 24 MB executable
+plus a 132 MB blob that must stay next to it, rather than one 154 MB file.
+`--requirements` bakes packages in, subject to the same limit as packed files.
 
-The command runs two stages, and both matter when debugging a build:
+`pyoxide dist-info ARCHIVE` prints the target triple, tags, version, extension
+modules and files of a cached Python distribution.
 
-1. Evaluate the `resources` target of `pyoxidizer.bzl` with the pinned
-   `pyoxidizerlib`. This resolves or downloads the Python distribution and
-   writes `build/<triple>/<profile>/resources/`: `pyo3-build-config-file.txt`,
-   `packed-resources`, licensing.
-2. Compile `crates/runner` with `PYO3_CONFIG_FILE` pointing at stage 1's config
-   (and `PYOXIDE_PACKED_RESOURCES_SPLIT=1` in split mode), then copy the
-   executable out.
+During development, `cargo build`/`cargo test` skip the runner: it cannot compile
+without the PyO3 artifacts from stage 1, so it is outside `default-members`.
 
-### `pyoxide dist-info`
-
-Prints the target triple, tags, version, extension modules and files of a
-`.tar.zst` Python distribution archive from the cache.
-
-## Project layout
-
-```mermaid
-graph LR
-  pin["Cargo.toml pin<br/>one revision, three crates"]
-  cli["crates/cli<br/>pyoxide"]
-  run["crates/runner<br/>pyoxide-runner"]
-  bzl["pyoxidizer.bzl"]
-  up["PyOxidizer crates<br/>pyoxidizerlib · pyembed · python-packaging"]
-
-  up --> pin
-  pin --> cli
-  pin --> run
-  cli -->|stage 1: resources| bzl
-  bzl -->|PyO3 config + packed resources| run
-```
+## Layout
 
 ```
 crates/cli      pyoxide: dist-info, package, package --unpack, build-runner
 crates/runner   pyoxide-runner: interpreter, --yaml, module scanning
-pyoxidizer.bzl  the embedding policy: which modules, which bytecode levels
-Justfile        build, test, runner, clean, upstream-*
-PORTING.md      where every piece came from and why
+pyoxidizer.bzl  which modules go in and at which bytecode levels
 ```
 
-`crates/runner` is deliberately **not** a default member: it cannot compile
-without the PyO3 artifacts that `build-runner` produces, so a plain `cargo
-build`/`cargo test` must not touch it.
+## Updating PyOxidizer
 
-## The pin, and updating it
-
-Everything PyOxidizer comes from one revision, repeated on three lines of
-`[workspace.dependencies]`. Today that revision is the fork's `fixes/upstream`
-branch: the base fork plus two fixes that upstream does not have yet (bytecode
-only wheels; `PyStatus_Exit` and the `cc` object name). Never `[patch]` a single
-crate of that repository — cargo then holds two sources for its path
-dependencies and their types stop matching.
+The dependency is one commit, written three times in `[workspace.dependencies]`.
+It points at `fram446742/PyOxidizer#fixes/upstream`: the base fork plus two fixes
+it does not carry yet.
 
 ```console
-$ just upstream-status     # pin, base head, fixes head
-$ just upstream-check      # exit 1 when the base fork moved past the pin
-$ just fixes-rebase        # rebase the fixes onto the base fork, prints the new sha
-$ just upstream-bump <rev> # move the pin; compile errors name what changed
+$ just upstream-check      # 1 if the base fork moved past the pin
+$ just fixes-rebase        # rebase the fixes onto it, prints the new revision
+$ just upstream-bump <rev> # move the pin; compile errors say what changed
 ```
 
-The fixes are maintained on that fork and are not proposed to the base fork;
-the base is consumed read-only. If a fix ever appears upstream, drop that
-commit, and when the branch is empty point the three lines at
-`https://github.com/ntamas/PyOxidizer`.
+If the fixes ever land upstream, point the revision at
+`https://github.com/ntamas/PyOxidizer` and drop the branch. The fork keeps the
+changes this project was built from as tags, `port/01` … `port/17`.
 
-## CI
+## Notes
 
-`.github/workflows/ci.yml` runs the tests, builds the runner (clang + lld
-installed) and smoke-tests it, and on a weekly schedule runs `just
-upstream-check` so a pin that falls behind the base fork turns red instead of
-rotting.
+- `package --unpack` writes no `.dist-info`, so `importlib.metadata` does not see
+  unpacked packages. Importing them works.
+- `_tkinter` is left out: it needs tcl shared libraries the distribution bundles
+  but cannot link statically.
+- Only Linux x86_64 has been exercised. The Windows and macOS paths are ported,
+  not tested.
 
-## Limitations
-
-- C extension modules cannot load from packed resources on Linux; use
-  `package --unpack` for anything with a `.so`.
-- `package --unpack` writes no `.dist-info`, so `importlib.metadata` does not
-  see unpacked packages. Importing them works.
-- `_tkinter` is not shipped: it needs shared tcl libraries the distribution
-  bundles but cannot link statically.
-- Verified on Linux x86_64 only. Windows/macOS paths are ported but untested.
-
-## Troubleshooting
+When something goes wrong:
 
 | Symptom | Cause |
 |---|---|
-| `unable to find PyOxidizer config file` | the file must be named `pyoxidizer.bzl` |
-| `could not find a package in Cargo manifest` | `add_cargo_manifest_licensing` must point at `crates/runner/Cargo.toml`, not the virtual workspace root |
-| `no bin target named pyoxide-runner` | the runner is outside `default-members`; `build-runner` passes `-p` |
-| `resolving ar header ... No such file or directory` | the pin lost the `libpython` fix; see the pin section |
-| `could not format PyStatus` on `--help` | the pin lost the `pyembed` fix; see the pin section |
-| `git fetch failed for <url>` | the pinned commit is not pushed to its repository |
-| runner prints `... packed-resources not found next to the executable` | split build without its blob |
+| `unable to find PyOxidizer config file` | the config must be named `pyoxidizer.bzl` |
+| `could not find a package in Cargo manifest` | `add_cargo_manifest_licensing` must point at `crates/runner/Cargo.toml`, not the workspace root |
+| `resolving ar header ... No such file or directory` | the pin lost the `libpython` fix |
+| `could not format PyStatus` on `--help` | the pin lost the `pyembed` fix |
+| `git fetch failed for <url>` | the pinned commit is not pushed |
 
 ## License
 
-Mozilla Public License 2.0, the license of the PyOxidizer code this project
-derives from. See `LICENSE`.
+MPL-2.0, like the PyOxidizer code this is derived from. See `LICENSE`.

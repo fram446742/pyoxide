@@ -28,55 +28,32 @@ const LEGACY_RUN_YAML: &str = "run-yaml";
 const RUNNER_HELP: &str = "\
 A self-contained Python interpreter.
 
-The interpreter, its standard library and all of its native extension modules
-are embedded in this executable, so no Python installation is required. A build
+The interpreter and its standard library are inside this executable. A build
 made with --split-resources keeps them in a `pyoxide-resources.packed-resources`
-file next to the executable instead; keep the two files together.
+file next to it, and the two must stay together.
 
-By default this executable is a `python` executable. Every argument is handed to
-the interpreter: -c, -m, a script path, `-` for stdin, -O, -OO, -B, -E, -s, -X,
--W, -V, --version, --help and the rest, with the documented exit codes. With no
-arguments at all it starts a REPL. Renaming the executable to `python`,
-`python3` or anything else changes nothing; the runner options below reach the
-non-interpreter behavior under any name.
+Everything else is python: -c, -m, a script, - for stdin, -O, -OO, -B, -E, -s,
+-X, -W, -V, --version, --help, with the usual exit codes. No arguments starts a
+REPL. The name of the executable does not matter.
 
-Runner features:
+Options of this runner (the rest belong to the interpreter):
 
-  --yaml FILE [args...]
-      Run an interpreter configured by a YAML file rather than the default
-      configuration. This also makes the runner usable as a script
-      interpreter:
+  --yaml FILE [args...]   Run an interpreter described by a YAML file. It also
+                          works as a script interpreter:
 
-          #!/usr/bin/env -S pyoxide-runner --yaml
+                              #!/usr/bin/env -S pyoxide-runner --yaml
 
-  pyoxide-modules/
-      Optional directory next to this executable. Every `*.packed-resources`
-      file in it is imported like a built-in library, and every package
-      directory in it is added to sys.path. `pyoxide package` produces both
-      forms, one per Python package:
+  --runner-help           Print this message. -h and --help are the
+                          interpreter's arguments.
 
-          $ pyoxide package --dest pyoxide-modules requests lxml
-          $ pyoxide package --dest pyoxide-modules --unpack numpy
+  run-yaml FILE -- ...    Deprecated spelling of --yaml.
+  run-python -- ...       Deprecated spelling of the default.
 
-      Copy files in to add a library, delete them to remove one. `--yaml`
-      configs can also list additional resources of their own via
-      `packed_resources`. A file or directory whose sidecar records a different
-      Python version is skipped with a warning instead of failing to import.
-
-  --runner-help
-      Print this message. -h and --help print the interpreter's usage instead,
-      because they are the interpreter's arguments.
-
-  run-yaml FILE -- [args...]
-      Deprecated spelling of --yaml, still accepted.
-
-  run-python -- [args...]
-      Deprecated spelling of the default behavior, still accepted.
-
-Note that sys.argv[0] and the interpreter's usage line report this executable's
-own path, so `pyoxide-runner --help` prints `usage: /path/to/pyoxide-runner
-[option] ...` where `python3 --help` prints `usage: python3 [option] ...`.
-Install it under the name you want reported.
+Libraries go in `pyoxide-modules/` next to this executable: every
+`*.packed-resources` file is imported like a built-in library, every package
+directory is added to sys.path, and a sidecar naming another Python version
+makes the runner skip the file with a warning. `pyoxide package` writes both
+forms.
 ";
 
 /// Remove the runner's own leading argument, returning the YAML file when the

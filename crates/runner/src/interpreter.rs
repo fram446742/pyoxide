@@ -17,16 +17,13 @@ const STDLIB_RESOURCES_DATA: Option<&[u8]> =
 #[cfg(not(stdlib_packed_resources))]
 const STDLIB_RESOURCES_DATA: Option<&[u8]> = None;
 
-/// Packed resources file read from the executable's directory instead of being
-/// embedded, as built by `pyoxide build-runner --split-resources`.
+/// Blob read from next to the executable in split builds.
 #[cfg(stdlib_packed_resources_split)]
 const STDLIB_RESOURCES_FILE: &str = "pyoxide-resources.packed-resources";
 
-/// Directory next to the executable scanned for per-library resources.
-///
-/// Each `*.packed-resources` file in it is registered as a resource source and
-/// each package directory is added to `sys.path`: copying files in makes the
-/// library importable, deleting them removes it.
+/// Directory next to the executable that holds libraries: every
+/// `*.packed-resources` file is a resource source, every package directory a
+/// `sys.path` entry.
 const MODULES_DIR: &str = "pyoxide-modules";
 
 const MODULES_FILE_SUFFIX: &str = ".packed-resources";
@@ -34,10 +31,9 @@ const MODULES_FILE_SUFFIX: &str = ".packed-resources";
 /// Separator used when joining `sys.path` entries into a PYTHONPATH value.
 const PATH_LIST_SEPARATOR: char = if cfg!(windows) { ';' } else { ':' };
 
-/// Python version (major.minor) this binary was built against, when known.
-///
-/// A dynamic build against the host's libpython carries no version, in which
-/// case sidecar files are loaded without a compatibility check.
+/// Python version this binary was built against, if the build recorded one.
+/// A dynamic build against the host's libpython has none, and then sidecars are
+/// not checked.
 const PYTHON_VERSION: Option<&str> = option_env!("PYOXIDE_PYTHON_VERSION");
 
 /// Metadata written next to each packed resources file by `pyoxide package`.
@@ -46,11 +42,8 @@ struct ModuleFileMetadata {
     python_version: Option<String>,
 }
 
-/// Whether a per-library file was built for the interpreter running it.
-///
-/// Bytecode compiled by another Python fails with opaque errors, so a
-/// mismatched file is skipped with a warning instead. Files without metadata
-/// are always accepted.
+/// Bytecode from another Python fails with opaque errors, so a mismatched file
+/// is skipped. Files without metadata are accepted.
 fn module_file_compatible(path: &Path) -> bool {
     let Some(expected) = PYTHON_VERSION else {
         return true;
@@ -107,9 +100,7 @@ fn add_module_files(builder: &mut OxidizedPythonInterpreterConfig<'_>, dir: &Pat
     }
 
     for path in paths {
-        // A directory of real files for the same package wins: it is the form
-        // that can carry extension modules. Loading both would make the packed
-        // copy shadow the usable one.
+        // A directory wins: it is the form that can carry extension modules.
         let stem = path
             .file_name()
             .map(|n| {
@@ -131,8 +122,7 @@ fn add_module_files(builder: &mut OxidizedPythonInterpreterConfig<'_>, dir: &Pat
             continue;
         }
 
-        // Memory-mapped so a large library set costs no Rust memory and files
-        // can be added and removed while files are being copied around.
+        // Memory-mapped: a large library set costs no Rust memory.
         builder
             .packed_resources
             .push(PackedResourcesSource::MemoryMappedPath(path));
@@ -148,12 +138,8 @@ struct PackageMetadata {
     python_version: Option<String>,
 }
 
-/// Subdirectories of `dir` that should become `sys.path` entries.
-///
-/// `pyoxide package --unpack` writes one directory per package with real files
-/// in it, which is what C extension modules and modules reading `__file__`
-/// require. Directories whose metadata names another Python are skipped with a
-/// warning, for the same reason packed files are.
+/// Package directories under `dir`: each becomes a `sys.path` entry. Same
+/// version check as the packed files.
 fn module_dirs(dir: &Path) -> Vec<PathBuf> {
     let mut dirs: Vec<_> = match std::fs::read_dir(dir) {
         Ok(entries) => entries
@@ -271,15 +257,13 @@ impl<'a> Config<'a> {
         if self_contained {
             self.inner.oxidized_importer = true;
 
-            // The default sys.path doesn't exist in self-contained binaries. So
-            // prevent it from materializing by default. But don't overwrite a custom
-            // search path setting if one is already defined!
+            // Self-contained binaries have no default sys.path; keep a custom
+            // one if it is already set.
             if self.interpreter_config.module_search_paths.is_none() {
                 self.interpreter_config.module_search_paths = Some(vec![]);
             }
 
-            // Without this, Python will attempt to derive these automatically and will likely
-            // emit warnings about the paths not existing.
+            // Otherwise Python derives these and warns that they do not exist.
             if let Some(exe_dir) = &exe_dir {
                 self.interpreter_config.home = Some(exe_dir.to_path_buf());
                 self.interpreter_config.prefix = Some(exe_dir.to_path_buf());
@@ -287,9 +271,8 @@ impl<'a> Config<'a> {
             }
         }
 
-        // Per-library resources shipped as files next to the executable. Also
-        // applies to a dynamic libpython build: that is how libraries are
-        // usually tried out during development.
+        // Libraries next to the executable also work in a dynamic build, which
+        // is how they are tried out during development.
         if let Some(exe_dir) = &exe_dir {
             let modules_dir = exe_dir.join(MODULES_DIR);
 
@@ -307,9 +290,7 @@ impl<'a> Config<'a> {
                         .get_or_insert_with(Vec::new)
                         .extend(dirs);
                 } else {
-                    // A dynamic build computes its own paths; PYTHONPATH is
-                    // appended to them, so this adds to the host's paths
-                    // instead of replacing them.
+                    // A dynamic build keeps its own paths and appends this.
                     let mut paths = dirs;
                     if let Some(existing) = std::env::var_os("PYTHONPATH") {
                         paths.extend(std::env::split_paths(&existing));
@@ -334,12 +315,9 @@ impl<'a> Config<'a> {
     }
 }
 
-/// Construct and run an embedded Python interpreter.
-///
-/// CPython declines to initialize for some command line arguments - notably
-/// `--help` and `--version` - and requests a clean process exit instead. That
-/// arrives as an error carrying an exit code rather than a message, so surface
-/// it as a normal return value and let the caller exit with that code.
+/// CPython answers some arguments, `--help` and `--version` among them, by
+/// asking to exit instead of initializing. That comes back as an error carrying
+/// a code, which is a normal outcome here.
 pub fn run_interpreter(config: OxidizedPythonInterpreterConfig) -> Result<i32> {
     let interp = match MainPythonInterpreter::new(config) {
         Ok(interp) => interp,

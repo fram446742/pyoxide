@@ -1,9 +1,5 @@
-//! Download wheels with pip, keeping each package's wheels separate.
-//!
-//! Ported from the fork's `pip_download_wheels` / `pip_download_wheel_resources`
-//! (`port/08`). Upstream has only the flattened `pip_download`, which cannot
-//! write one file per package nor keep the wheels on disk for `--unpack`.
-//! The pip invocation itself is upstream's, verbatim.
+//! Run pip and keep each package's wheels apart, so packaging can write one
+//! file or directory per package.
 
 use {
     anyhow::{anyhow, Context, Result},
@@ -16,9 +12,8 @@ use {
     tempfile::TempDir,
 };
 
-/// Run `pip download` into a temporary directory.
-///
-/// The caller owns the directory: unpacking needs the wheels on disk.
+/// Run `pip download` into a temporary directory that the caller keeps, since
+/// `--unpack` reads the wheels afterwards.
 pub fn download_wheels(
     env: &pyoxidizerlib::environment::Environment,
     host_dist: &dyn PythonDistribution,
@@ -81,7 +76,7 @@ pub fn download_wheels(
         .unchecked()
         .run()?;
 
-    // pip's output only matters when it failed or when the caller asked for it.
+    // pip's output only matters on failure or with --verbose.
     if !output.status.success() {
         std::io::stderr().write_all(&output.stdout)?;
         return Err(anyhow!("error running pip"));
@@ -135,10 +130,8 @@ pub fn download_wheel_resources<'a>(
     Ok(res)
 }
 
-/// The distribution name of a wheel file.
-///
-/// The wheel naming grammar puts the distribution before the first `-`, with
-/// hyphens escaped as underscores, so splitting is sufficient.
+/// The distribution name of a wheel: everything before the first `-`, with
+/// hyphens escaped as underscores by the wheel format.
 fn package_name_from_wheel(path: &std::path::Path) -> Result<String> {
     let file_name = path
         .file_name()

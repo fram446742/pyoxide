@@ -1,9 +1,5 @@
-//! Write the resources of Python packages to a directory.
-//!
-//! Ported from the fork's `python_package_generate_packed_resources` and
-//! `python_package_unpack_wheels` (`port/13`, `port/15`, `port/16`). The
-//! primitives come from the pinned upstream crates; only the composition is
-//! ours.
+//! Write Python package resources: one packed file per package, or a directory
+//! of real files with `--unpack`.
 
 use {
     anyhow::{anyhow, Context, Result},
@@ -70,8 +66,7 @@ pub fn generate_packed_resources(
     policy.set_include_distribution_sources(true);
     policy.set_include_distribution_resources(true);
     policy.set_resources_location(ConcreteResourceLocation::InMemory);
-    // Bytecode for every level so imports succeed under -O and -OO, matching
-    // the policy of `pyoxidizer python`.
+    // Without every level, imports fail under -O and -OO.
     policy.set_bytecode_optimize_level_zero(true);
     policy.set_bytecode_optimize_level_one(true);
     policy.set_bytecode_optimize_level_two(true);
@@ -104,8 +99,7 @@ pub fn generate_packed_resources(
 
         let mut collector = PythonResourceCollector::new(
             vec![AbstractResourceLocation::InMemory],
-            // Extension modules are never written; keep the policy closed so
-            // mistakes fail instead of silently embedding .so data.
+            // Extension modules are never written here.
             vec![],
             false,
             false,
@@ -116,9 +110,8 @@ pub fn generate_packed_resources(
                 PythonResource::ModuleSource(r) => {
                     collector.add_python_module_source(r, &ConcreteResourceLocation::InMemory)?;
                 }
-                // Wheels ship some modules only as .pyc (numpy has one), and
-                // others as source that still needs compiling. Both are
-                // perfectly loadable from memory.
+                // Some wheels ship modules only as .pyc (numpy does), and
+                // others as source that still needs compiling.
                 PythonResource::ModuleBytecode(r) => {
                     collector.add_python_module_bytecode(r, &ConcreteResourceLocation::InMemory)?;
                 }
@@ -136,9 +129,7 @@ pub fn generate_packed_resources(
                         &ConcreteResourceLocation::InMemory,
                     )?;
                 }
-                // Resources that cannot be loaded from memory would make the
-                // packed resources file incomplete or unloadable. Skip them so
-                // e.g. requests packages despite its C accelerator wheels.
+                // Not loadable from memory; skipped and reported below.
                 PythonResource::ExtensionModule(_) | PythonResource::File(_) => {
                     let kind = match resource {
                         PythonResource::ExtensionModule(_) => {
@@ -171,8 +162,7 @@ pub fn generate_packed_resources(
             .compile_resources(&mut compiler)
             .with_context(|| format!("compiling resources of {}", name))?;
 
-        // In-memory resources produce no extra file writes; wheels that do
-        // would make the per-package file incomplete, so fail loudly.
+        // Anything else written to disk would make this file incomplete.
         if !compiled.extra_files.is_empty() {
             return Err(anyhow!(
                 "{} produced extra files that cannot be part of its packed resources file",
@@ -193,9 +183,8 @@ pub fn generate_packed_resources(
         writer.flush()?;
         drop(writer);
 
-        // The runner reads this before loading the file: bytecode from another
-        // Python fails with opaque import errors, so it must be skipped
-        // loudly. Absence of the sidecar means "load it anyway".
+        // The runner checks this before loading: bytecode from another Python
+        // fails with opaque import errors. No sidecar means "load it anyway".
         let metadata_file = dest_path.join(format!("{}.packed-resources.json", name));
         let metadata = serde_json::json!({
             "python_version": python_version,
@@ -207,8 +196,7 @@ pub fn generate_packed_resources(
 
         println!("wrote {}", dest_file.display());
 
-        // Say per package what the file is missing: the package may still
-        // import, so the omission is invisible until something needs it.
+        // Name what the file is missing, per package.
         if skipped_extension_modules + skipped_files > 0 {
             println!(
                 "  incomplete: {} skipped",
@@ -222,9 +210,7 @@ pub fn generate_packed_resources(
         .close()
         .context("closing temporary directory")?;
 
-    // A verdict, not just counts: some packages only lose an optional
-    // accelerator, others lose a module they cannot work without, and only
-    // the caller can tell which. Naming them makes the check one command.
+    // Some packages only lose an accelerator, others something they need.
     if incomplete.is_empty() {
         println!(
             "packaging complete: {} package(s), nothing was skipped",
@@ -245,9 +231,7 @@ pub fn generate_packed_resources(
             );
         }
 
-        // A packed resources file cannot carry these on this platform, so the
-        // only fix is the other mode. Print the exact command instead of a
-        // generic hint: the caller already has every value they need.
+        // The only fix is the other mode, and the caller has every value.
         println!();
         println!(
             "C extension modules cannot be loaded from a packed resources file on this platform, so these packages will fail at import. Ship them as real files instead:"
@@ -263,12 +247,9 @@ pub fn generate_packed_resources(
     Ok(())
 }
 
-/// Write each resolved wheel's files to its own directory under `dest_path`.
-///
-/// This is the filesystem counterpart of `generate_packed_resources`: a runner
-/// adds `<dest>/<name>` to `sys.path`, so modules load from real files. That is
-/// what packages needing C extension modules or a real `__file__` require,
-/// since packed resources can only be loaded from memory.
+/// Write each package as a directory under `dest_path`. The runner adds
+/// `<dest>/<name>` to `sys.path`, which is what `.so` modules and `__file__`
+/// need.
 pub fn unpack_wheels(
     env: &Environment,
     dest_path: &Path,
@@ -307,16 +288,14 @@ pub fn unpack_wheels(
         let wheel = WheelArchive::from_path(&path)?;
         let package_path = dest_path.join(&name);
 
-        // Installing is not additive: replace whatever was there so a package
-        // upgrade does not leave stale modules behind.
+        // Replace whatever was there, so an upgrade leaves nothing stale.
         if package_path.exists() {
             std::fs::remove_dir_all(&package_path)
                 .with_context(|| format!("removing {}", package_path.display()))?;
         }
 
-        // The helpers return install-layout paths: root files and *.dist-info
-        // as-is, purelib/platlib/data with their wheel prefix stripped. Placing
-        // all of them under one directory yields a sys.path entry.
+        // The wheel helpers return install-layout paths; putting all of them
+        // under one directory makes it a sys.path entry.
         let mut files = wheel.regular_files();
         files.extend(wheel.purelib_files());
         files.extend(wheel.platlib_files());
@@ -381,8 +360,7 @@ pub fn unpack_wheels(
     Ok(())
 }
 
-/// Human readable count of the resources a package lost, e.g.
-/// `1 C extension module(s), 2 untyped file(s)`.
+/// e.g. `1 C extension module(s), 2 untyped file(s)`.
 fn describe_skipped(extension_modules: usize, files: usize) -> String {
     let mut parts = Vec::new();
 

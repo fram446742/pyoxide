@@ -1,8 +1,5 @@
-# Describes the Python embedding artifacts for the pyoxide runner: a PyO3
-# config file and a packed resources blob, written under BUILD_PATH.
-#
-# `pyoxide build-runner` evaluates this target and then compiles the runner
-# against what it produced.
+# Embedding artifacts for the runner: a PyO3 config and a packed resources
+# blob, written under BUILD_PATH by `pyoxide build-runner`.
 
 BUILD_PATH = VARS.get("BUILD_PATH", CWD + "/build")
 PYTHON_VERSION = VARS.get("PYTHON_VERSION", "3.11")
@@ -24,9 +21,7 @@ def make_resources():
     policy.include_distribution_resources = True
     policy.resources_location = "in-memory"
 
-    # Bytecode for every optimization level. Without the -O1 and -O2 variants,
-    # imports performed during interpreter startup fail when the executable is
-    # invoked with -O or -OO.
+    # Without all three, imports fail under -O and -OO.
     policy.bytecode_optimize_level_zero = True
     policy.bytecode_optimize_level_one = True
     policy.bytecode_optimize_level_two = True
@@ -37,13 +32,11 @@ def make_resources():
     )
 
     if REQUIREMENTS:
-        # One pip invocation for every requirement so shared dependencies are
-        # resolved and installed exactly once.
+        # One pip call, so shared dependencies are installed once.
         resources = exe.pip_install(REQUIREMENTS.split())
 
-        # A packed resources blob loaded from memory cannot carry extension
-        # modules or untyped files. Skip them, as `pyoxide package` does, so
-        # e.g. requests embeds despite its C accelerator wheels.
+        # Memory-loaded resources cannot carry extension modules or untyped
+        # files. Skip them, as `pyoxide package` does.
         kept = [r for r in resources if type(r) not in ("PythonExtensionModule", "File")]
 
         skipped = len(resources) - len(kept)

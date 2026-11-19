@@ -1,7 +1,5 @@
-//! Build the self-contained runner: evaluate `pyoxide.bzl` for its embedding
-//! artifacts, then compile `pyoxide-runner` against them.
-//!
-//! Ported from the fork's `build_pyoxy_runner` (`port/08`, `port/11`).
+//! Build the runner: evaluate `pyoxidizer.bzl` for its embedding artifacts, then
+//! compile `pyoxide-runner` against them.
 
 use {
     anyhow::{anyhow, Context, Result},
@@ -22,17 +20,14 @@ pub fn build_runner(
     split_resources: bool,
     verbose: bool,
 ) -> Result<()> {
-    // First stage: evaluate the project's `resources` target, which writes the
-    // embedding artifacts - pyo3 config, packed resources, licensing - into
-    // the build directory.
+    // First stage: the `resources` target writes the PyO3 config, the packed
+    // resources and the licensing into the build directory.
     let project_path = std::fs::canonicalize(project_path)
         .with_context(|| format!("resolving {}", project_path.display()))?;
 
     let mut vars = extra_vars;
 
-    // The embedding artifacts for Python-linked executables always include the
-    // stdlib resources. Pointing BUILD_PATH at a project-local directory keeps
-    // them grouped with the binary that consumes them.
+    // Keep the artifacts with the binary that consumes them.
     vars.entry("BUILD_PATH".to_string()).or_insert_with(|| {
         Some(project_path.join("build").display().to_string())
     });
@@ -79,9 +74,8 @@ pub fn build_runner(
 
     let bin_name = "pyoxide-runner";
 
-    // Cargo rebuilds when PYO3_CONFIG_FILE changes thanks to
-    // `cargo:rerun-if-env-changed` in the runner's build script, so repeated
-    // invocations with a different --python-version do produce a rebuild.
+    // The runner's build script watches PYO3_CONFIG_FILE, so a different
+    // --python-version does rebuild.
     let exe_path = project_path
         .join("target")
         .join(&target_triple)
@@ -111,8 +105,7 @@ pub fn build_runner(
         pyo3_config.display().to_string(),
     );
 
-    // Read by the runner's build script: it decides whether the packed
-    // resources are compiled in or loaded from a sibling file at run time.
+    // Decides between embedded resources and a sibling blob.
     if split_resources {
         env_vars.insert(
             "PYOXIDE_PACKED_RESOURCES_SPLIT".to_string(),
@@ -143,9 +136,7 @@ pub fn build_runner(
 
     println!("wrote {}", dest_exe.display());
 
-    // With --split-resources the blob is not embedded: it ships as a sibling
-    // file that the runner memory-maps. The name is what interpreter.rs looks
-    // for (STDLIB_RESOURCES_FILE).
+    // The name interpreter.rs looks for when built for split resources.
     if split_resources {
         let source = artifacts_dir.join("resources").join("packed-resources");
         let dest_blob = dest_path.join("pyoxide-resources.packed-resources");
@@ -170,12 +161,8 @@ fn exe_name_file_with_suffix(exe_name: &str, target_triple: &str) -> String {
     }
 }
 
-/// Find the directory under `build_dir` containing a `resources/`
-/// `pyo3-build-config-file.txt`.
-///
-/// The regular layout is `<build>/<triple>/<profile>/resources/`, but the
-/// depth-limited walk keeps this working if the intermediate directory names
-/// change. Returns None when nothing was found.
+/// Find `resources/pyo3-build-config-file.txt` under `build_dir`. The layout is
+/// `<build>/<triple>/<profile>/`, but the short walk survives changes to it.
 fn find_pyo3_config_dir(build_dir: &Path) -> Option<PathBuf> {
     const MAX_DEPTH: usize = 4;
 
