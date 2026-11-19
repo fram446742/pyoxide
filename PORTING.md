@@ -65,8 +65,8 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
 
 ## Bumping the pin
 
-1. In the fork: `just sync`, then `just fixes-rebase` (rebases `fixes/upstream`
-   onto `origin/main`; prints the new revision).
+1. `scripts/fixes-rebase.sh [fork-checkout]` (rebases `fixes/upstream` onto
+   `origin/main`; prints the new revision).
 2. `git push --force-with-lease myrepo fixes/upstream`.
 3. Here: `just upstream-bump <rev>`; `just upstream-check` should say ok.
 
@@ -100,4 +100,5 @@ three dependency lines at `ntamas/PyOxidizer` and delete the branch.
   job in CI that builds and smoke-tests the artifact, and a weekly scheduled
   run of the check. The fixes branch is rebased with `just fixes-rebase` in the
   fork.
-- [ ] F5 — retire the fork.
+- [x] F5 — the fork is a mirror: `main` fast-forwards to `origin/main`, it
+  carries no commits of its own, and only `fixes/upstream` still lives there.
