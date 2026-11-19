@@ -11,7 +11,7 @@ they do not expose — per-package library files and a prebuilt `python`
 executable.
 
 ```console
-$ scripts/runner.sh
+$ just runner
 ...
 -rwxr-xr-x 1 user user 154M  pyoxide-runner
 Python 3.11.18
@@ -38,6 +38,7 @@ Python version (and per set of baked-in libraries) by `pyoxide build-runner`.
 | Thing | Why |
 |---|---|
 | Rust (edition 2024, 1.85+) | building either binary |
+| [`just`](https://github.com/casey/just) | the recipes below; every one is a two-line wrapper over cargo, so the raw commands work without it |
 | Rust 1.99.1 | **downloaded automatically** by PyOxidizer when building the runner; it reads LLVM 23 bitcode |
 | `clang` and `lld` | the runner links a bitcode `libpython` statically (Linux/macOS) |
 | network | first runner build downloads its Python distribution into `~/.cache/pyoxidizer/python_distributions` |
@@ -49,7 +50,7 @@ embedded distribution.
 
 ```console
 $ cargo build                                    # the `pyoxide` tool
-$ scripts/runner.sh                              # the runner, stdlib embedded
+$ just runner                                    # the runner, stdlib embedded
 $ dist/runner/pyoxide-runner -c 'print("hi")'    # or: ./pyoxide-runner script.py
 ```
 
@@ -209,7 +210,7 @@ graph LR
 crates/cli      pyoxide: dist-info, package, package --unpack, build-runner
 crates/runner   pyoxide-runner: interpreter, --yaml, module scanning
 pyoxidizer.bzl  the embedding policy: which modules, which bytecode levels
-scripts/        runner.sh, upstream.sh
+Justfile        build, test, runner, clean, upstream-*
 PORTING.md      where every piece came from and why
 ```
 
@@ -227,10 +228,10 @@ crate of that repository — cargo then holds two sources for its path
 dependencies and their types stop matching.
 
 ```console
-$ scripts/upstream.sh status          # pin, base head, fixes head
-$ scripts/upstream.sh check           # exit 1 when the base fork moved past the pin
-$ scripts/upstream.sh fixes-rebase    # rebase the fixes onto the base fork, prints the new sha
-$ scripts/upstream.sh bump <rev>      # move the pin; compile errors name what changed
+$ just upstream-status     # pin, base head, fixes head
+$ just upstream-check      # exit 1 when the base fork moved past the pin
+$ just fixes-rebase        # rebase the fixes onto the base fork, prints the new sha
+$ just upstream-bump <rev> # move the pin; compile errors name what changed
 ```
 
 The fixes are maintained on that fork and are not proposed to the base fork;
@@ -241,9 +242,9 @@ commit, and when the branch is empty point the three lines at
 ## CI
 
 `.github/workflows/ci.yml` runs the tests, builds the runner (clang + lld
-installed) and smoke-tests it, and on a weekly schedule runs
-`scripts/upstream.sh check` so a pin that falls behind the base fork turns red
-instead of rotting.
+installed) and smoke-tests it, and on a weekly schedule runs `just
+upstream-check` so a pin that falls behind the base fork turns red instead of
+rotting.
 
 ## Limitations
 

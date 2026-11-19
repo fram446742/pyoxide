@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: cargo test
+      - uses: extractions/setup-just@v3
+      - run: just test
 
   # The runner is the artifact that matters: embedded Python, C-extension
   # libraries from pyoxide-modules, and the split-resources layout.
@@ -19,9 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: extractions/setup-just@v3
       - name: Install clang and lld
         run: sudo apt-get update && sudo apt-get install -y clang lld
-      - run: scripts/runner.sh
+      - run: just runner
       - name: Smoke test
         run: |
           ./dist/runner/pyoxide-runner -c 'import sys; print(sys.version)'
@@ -33,4 +35,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: scripts/upstream.sh check
+      - uses: extractions/setup-just@v3
+      - run: just upstream-check
