@@ -3251,6 +3251,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3522,9 +3531,9 @@ dependencies = [
 
 [[package]]
 name = "mailparse"
-version = "0.16.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60819a97ddcb831a5614eb3b0174f3620e793e97e09195a395bfa948fd68ed2f"
+checksum = "068d4f5d1083883b9e626051dc5bdaa321f5be01093e61ade3ee3ab44dafeadd"
 dependencies = [
  "charset",
  "data-encoding",
@@ -4416,7 +4425,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "duct",
  "pyoxidizer",
+ "python-packaging",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -4451,7 +4464,7 @@ dependencies = [
  "path-dedot",
  "pyo3-build-config",
  "python-packaging",
- "python-packed-resources",
+ "python-packed-resources 0.14.0-pre (git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f)",
  "remove_dir_all",
  "rustc_version",
  "semver",
@@ -4482,23 +4495,33 @@ dependencies = [
 [[package]]
 name = "python-packaging"
 version = "0.18.0-pre"
-source = "git+https://github.com/ntamas/PyOxidizer?rev=df4d1e7da1feda13de55abc8496bdf68bf9f770f#df4d1e7da1feda13de55abc8496bdf68bf9f770f"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b#4bb933a0e845acbc285e8b6a3a398908b3402a8b"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "byteorder",
  "encoding_rs",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "mailparse",
  "once_cell",
- "python-packed-resources",
+ "python-packed-resources 0.14.0-pre (git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b)",
  "regex",
- "sha2 0.10.9",
+ "sha2 0.11.1",
  "simple-file-manifest",
  "spdx",
  "time",
  "walkdir",
  "zip 9.7.3",
+]
+
+[[package]]
+name = "python-packed-resources"
+version = "0.14.0-pre"
+source = "git+https://github.com/fram446742/PyOxidizer?rev=4bb933a0e845acbc285e8b6a3a398908b3402a8b#4bb933a0e845acbc285e8b6a3a398908b3402a8b"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "safe-transmute",
 ]
 
 [[package]]
@@ -5635,9 +5658,9 @@ dependencies = [
 
 [[package]]
 name = "spdx"
-version = "0.10.9"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3e17e880bafaeb362a7b751ec46bdc5b61445a188f80e0606e68167cd540fa3"
+checksum = "646c5a367da914e3babcb9cd8e91c37ccaac42325b8f86f036513ad103f2a716"
 dependencies = [
  "smallvec",
 ]

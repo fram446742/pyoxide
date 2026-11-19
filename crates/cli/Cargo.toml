@@ -12,3 +12,7 @@ anyhow.workspace = true
 clap.workspace = true
 # Package name `pyoxidizer`, library name `pyoxidizerlib`.
 pyoxidizer.workspace = true
+python-packaging.workspace = true
+serde_json.workspace = true
+duct.workspace = true
+tempfile.workspace = true

@@ -19,7 +19,7 @@ fast-forward to `origin/main`.
 | `port/11-pyoxy-split` | resources beside the executable, versioned libs | `crates/runner` | mismatch warns and skips |
 | `port/12-docs-split` | split-resource docs | `README.md` | |
 | `port/13-package-verdict` | per-package verdict | `crates/cli` | |
-| `port/14-wheel-bytecode` | bytecode-only wheels in the scanner | **`patches/`** | also sent upstream |
+| `port/14-wheel-bytecode` | bytecode-only wheels in the scanner | **`[patch]` in `Cargo.toml`** | delete once upstream takes it |
 | `port/15-package-unpack` | `package --unpack` | `crates/cli` | |
 | `port/16-output-verdict` | verdict at the end of packaging | `crates/cli` | |
 | `port/17-just-clean` | `just clean` / `clean-all` | `Justfile` | |
@@ -46,9 +46,10 @@ What upstream does expose, and the port must build on:
 - **Crate first, patch last.** Everything reachable through
   `pyoxidizerlib`'s public modules (`py_packaging`, `projectmgmt`,
   `environment`, `shell`, `starlark`) goes in a crate here.
-- **`patches/` means upstream internals.** A patch is a 3-way diff against the
-  pinned revision, applied by `just upstream-bump` and by CI. If `patches/`
-  grows past a couple of files, the previous rule was applied wrongly.
+- **`[patch]` means upstream internals.** Cargo's `[patch]` block replaces one
+  crate at a revision, with no vendoring: today exactly one crate
+  (`python-packaging`, for port/14). If the block grows past a couple of
+  crates, the previous rule was applied wrongly.
 - **Send patches upstream.** Anything accepted upstream leaves `patches/`.
 
 ## Not ported
@@ -66,7 +67,16 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
   signature difference: upstream takes `&str`, the fork had `&Path`).
   `crates/runner` is deferred to F3 because it cannot compile without PyO3
   embedding artifacts.
-- [ ] F2 — `package` / `package --unpack` in `crates/cli`.
+- [x] F2 — `package` / `package --unpack` in `crates/cli`, with per-package
+  verdicts. Verified end to end: `idna` packed; `psutil` reports the skipped C
+  extension; `numpy` packs only with the bytecode-only-wheel fix and its
+  unpacked form imports in CPython 3.11 (`numpy 2.2.6`, `det= -2.0`).
+  Two things upstream lacks had to be ported too:
+  `pip_download_wheels`/`pip_download_wheel_resources` (now `crates/cli/src/pip.rs`)
+  and the `.pyc` scanner fix, which needs a `[patch]` on `python-packaging`
+  until it lands upstream. `--unpack` writes no `.dist-info`, so
+  `importlib.metadata.version()` does not work for unpacked packages —
+  same behaviour as the fork.
 - [ ] F3 — `crates/runner` (pyoxy equivalent) over `pyembed`.
 - [ ] F4 — `patches/`, CI on pin bumps, weekly upstream check.
 - [ ] F5 — retire the fork.
