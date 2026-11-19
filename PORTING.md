@@ -22,7 +22,7 @@ fast-forward to `origin/main`.
 | `port/14-wheel-bytecode` | bytecode-only wheels in the scanner | **fork branch `fixes/upstream`** | delete the branch once upstream takes it |
 | `port/15-package-unpack` | `package --unpack` | `crates/cli` | |
 | `port/16-output-verdict` | verdict at the end of packaging | `crates/cli` | |
-| `port/17-just-clean` | `just clean` / `clean-all` | `Justfile` | |
+| `port/17-just-clean` | clean recipes | `rm -rf dist build [target]` | dropped with `just` |
 
 ## F2 reality check (verified against the pinned revision)
 
@@ -54,7 +54,8 @@ What upstream does expose, and the port must build on:
   dependency graph must come from a single source. When a fix lands upstream,
   rebase the branch on the new base and drop the commit; when the branch is
   empty, point the pin at `ntamas/PyOxidizer`.
-- **Send patches upstream.** Anything accepted upstream leaves `patches/`.
+- **Fixes stay on the fork.** Nothing is sent to the base fork; it is consumed
+  read-only. If upstream ever adopts a fix, drop that commit from the branch.
 
 ## Not ported
 
@@ -65,17 +66,17 @@ it), and `pyoxy` itself (replaced by `crates/runner`).
 
 ## Bumping the pin
 
-1. `scripts/fixes-rebase.sh [fork-checkout]` (rebases `fixes/upstream` onto
-   `origin/main`; prints the new revision).
+1. `scripts/upstream.sh fixes-rebase` (rebases `fixes/upstream` onto
+   `origin/main`; prints the new revision; `FORK_CHECKOUT` overrides the path).
 2. `git push --force-with-lease myrepo fixes/upstream`.
-3. Here: `just upstream-bump <rev>`; `just upstream-check` should say ok.
+3. Here: `scripts/upstream.sh bump <rev>`; `scripts/upstream.sh check` says ok.
 
 When the two fixes land upstream, `fixes/upstream` becomes empty: point the
 three dependency lines at `ntamas/PyOxidizer` and delete the branch.
 
 ## Status
 
-- [x] F0 — fork frozen: `port/*` tags, `base` = `origin/main`, `just sync`.
+- [x] F0 — fork frozen: `port/*` tags, `base` = `origin/main`, `main` a mirror.
 - [x] F1 — this skeleton compiles against the pinned revision; `pyoxide
   dist-info` is a real call into `pyoxidizerlib` (it also caught the first
   signature difference: upstream takes `&str`, the fork had `&Path`).
@@ -95,10 +96,10 @@ three dependency lines at `ntamas/PyOxidizer` and delete the branch.
   standard library embedded, `--yaml`, and `pyoxide-modules/` support. Built by
   `pyoxide build-runner`, which evaluates `pyoxidizer.bzl` for the embedding
   artifacts and then compiles the crate against them.
-- [x] F4 — bump machinery: `just upstream-bump`, `just upstream-status`,
-  `just upstream-check` (fails when the base fork moved past the pin), a runner
+- [x] F4 — bump machinery: `scripts/upstream.sh {status,check,bump}` (check
+  fails when the base fork moved past the pin), a runner
   job in CI that builds and smoke-tests the artifact, and a weekly scheduled
-  run of the check. The fixes branch is rebased with `just fixes-rebase` in the
-  fork.
+  run of the check. The fixes branch is rebased with
+  `scripts/upstream.sh fixes-rebase`.
 - [x] F5 — the fork is a mirror: `main` fast-forwards to `origin/main`, it
   carries no commits of its own, and only `fixes/upstream` still lives there.
